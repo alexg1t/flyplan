@@ -25,7 +25,7 @@
   </p>
 
   <main class="layout">
-    <div id="map" aria-label="Mapa: haz clic para añadir waypoints"></div>
+    <div id="map" aria-label="Mapa: haz clic para añadir puntos"></div>
 
     <aside id="panel">
       <form id="search" role="search">
@@ -33,13 +33,33 @@
                aria-label="Buscar un lugar o unas coordenadas">
       </form>
 
+      <fieldset class="mode">
+        <legend>Tipo de misión</legend>
+        <label><input type="radio" name="mission-type" value="route"> Ruta de waypoints</label>
+        <label><input type="radio" name="mission-type" value="area"> Área de mapeo</label>
+      </fieldset>
+
       <div id="messages" aria-live="polite"></div>
 
-      <section class="stats" aria-label="Resumen de la misión">
+      <section class="stats" data-mode="route" aria-label="Resumen de la misión">
         <div><span>Waypoints</span><b id="stat-count">0</b></div>
         <div><span>Distancia</span><b id="stat-distance">0 m</b></div>
         <div><span>Tiempo estimado</span><b id="stat-time">0:00</b></div>
       </section>
+
+      <div data-mode="area">
+        <section class="stats" aria-label="Resumen del mapeo">
+          <div><span>Área</span><b id="a-area">—</b></div>
+          <div><span>GSD</span><b id="a-gsd">—</b></div>
+          <div><span>Pasadas</span><b id="a-lines">—</b></div>
+          <div><span>Fotos</span><b id="a-photos">—</b></div>
+          <div><span>Distancia</span><b id="a-distance">—</b></div>
+          <div><span>Tiempo</span><b id="a-time">—</b></div>
+          <div class="wide"><span>Baterías</span><b id="a-batteries">—</b>
+            <small>25 min de mapeo por batería, sin contar ida y vuelta</small></div>
+        </section>
+        <p id="area-status" class="muted"></p>
+      </div>
 
       <div class="buttons">
         <button type="button" id="btn-export" class="primary">Exportar KMZ</button>
@@ -50,50 +70,99 @@
       <p id="profile-status" class="muted"></p>
       <input id="file-input" type="file" accept=".kmz" hidden>
 
-      <section>
-        <h2>Waypoints</h2>
-        <p id="wp-empty" class="muted">Haz clic en el mapa para añadir el primer waypoint.</p>
-        <p id="route-hint" class="muted" hidden>Para cerrar la ruta y volver al inicio, haz clic en el waypoint 1 del mapa.</p>
-        <ol id="wp-list"></ol>
-      </section>
+      <div data-mode="route">
+        <section>
+          <h2>Waypoints</h2>
+          <p id="wp-empty" class="muted">Haz clic en el mapa para añadir el primer waypoint.</p>
+          <p id="route-hint" class="muted" hidden>Para cerrar la ruta y volver al inicio, haz clic en el waypoint 1 del mapa.</p>
+          <ol id="wp-list"></ol>
+        </section>
 
-      <section id="wp-editor" hidden>
-        <h2>Waypoint <span id="wp-number"></span></h2>
+        <section id="wp-editor" hidden>
+          <h2>Waypoint <span id="wp-number"></span></h2>
+          <div class="field">
+            <label for="wp-height">Altura sobre el despegue (m)</label>
+            <input id="wp-height" type="number" step="0.1">
+            <label class="inherit"><input type="checkbox" id="wp-height-inherit"> Usar valor de la misión</label>
+          </div>
+          <div class="field">
+            <label for="wp-speed">Velocidad hasta el siguiente punto (m/s)</label>
+            <input id="wp-speed" type="number" step="0.1">
+            <label class="inherit"><input type="checkbox" id="wp-speed-inherit"> Usar valor de la misión</label>
+          </div>
+          <div class="field">
+            <label for="wp-gimbalPitch">Ángulo del gimbal (°)</label>
+            <input id="wp-gimbalPitch" type="number" step="1">
+            <label class="inherit"><input type="checkbox" id="wp-gimbalPitch-inherit"> Usar valor de la misión</label>
+          </div>
+          <fieldset class="field">
+            <legend>Rumbo del dron</legend>
+            <label><input type="radio" name="heading" value="follow"> Seguir la ruta</label>
+            <label><input type="radio" name="heading" value="fixed"> Ángulo fijo</label>
+            <input id="wp-heading" type="number" min="0" max="359" step="1"
+                   aria-label="Ángulo de rumbo en grados, 0 es el norte"> °
+          </fieldset>
+
+          <h3>Acciones, en orden</h3>
+          <p id="action-empty" class="muted">Sin acciones.</p>
+          <ol id="action-list"></ol>
+          <div class="buttons small">
+            <button type="button" data-add="photo">+ Foto</button>
+            <button type="button" data-add="startVideo">+ Empezar vídeo</button>
+            <button type="button" data-add="stopVideo">+ Parar vídeo</button>
+            <button type="button" data-add="wait">+ Esperar</button>
+          </div>
+          <div class="buttons small">
+            <button type="button" id="wp-delete" class="danger">Borrar este waypoint</button>
+          </div>
+        </section>
+      </div>
+
+      <section data-mode="area">
+        <div class="buttons small">
+          <button type="button" id="vx-delete" class="danger">Borrar vértice seleccionado</button>
+        </div>
+        <h2>Parámetros del mapeo</h2>
         <div class="field">
-          <label for="wp-height">Altura sobre el despegue (m)</label>
-          <input id="wp-height" type="number" step="0.1">
-          <label class="inherit"><input type="checkbox" id="wp-height-inherit"> Usar valor de la misión</label>
+          <label for="p-height">Altura sobre el despegue (m)</label>
+          <input id="p-height" type="number" step="0.1">
         </div>
         <div class="field">
-          <label for="wp-speed">Velocidad hasta el siguiente punto (m/s)</label>
-          <input id="wp-speed" type="number" step="0.1">
-          <label class="inherit"><input type="checkbox" id="wp-speed-inherit"> Usar valor de la misión</label>
+          <label for="p-gsd">GSD objetivo (cm/px)</label>
+          <input id="p-gsd" type="number" step="0.01" min="0.1">
         </div>
         <div class="field">
-          <label for="wp-gimbalPitch">Ángulo del gimbal (°)</label>
-          <input id="wp-gimbalPitch" type="number" step="1">
-          <label class="inherit"><input type="checkbox" id="wp-gimbalPitch-inherit"> Usar valor de la misión</label>
+          <label for="p-resolution">Resolución de foto</label>
+          <select id="p-resolution">
+            <option value="12">12 MP</option>
+            <option value="50">50 MP</option>
+          </select>
+          <p class="muted">Pon la misma resolución en la cámara de DJI Fly.</p>
+        </div>
+        <div class="field">
+          <label for="p-front">Solape frontal (%)</label>
+          <input id="p-front" type="number" step="1">
+        </div>
+        <div class="field">
+          <label for="p-side">Solape lateral (%)</label>
+          <input id="p-side" type="number" step="1">
         </div>
         <fieldset class="field">
-          <legend>Rumbo del dron</legend>
-          <label><input type="radio" name="heading" value="follow"> Seguir la ruta</label>
-          <label><input type="radio" name="heading" value="fixed"> Ángulo fijo</label>
-          <input id="wp-heading" type="number" min="0" max="359" step="1"
-                 aria-label="Ángulo de rumbo en grados, 0 es el norte"> °
+          <legend>Dirección de las pasadas</legend>
+          <label><input type="checkbox" id="p-direction-auto"> Automática (lado más largo)</label>
+          <input id="p-direction" type="number" min="0" max="179" step="1"
+                 aria-label="Dirección de las pasadas en grados, 0 es norte-sur"> °
         </fieldset>
-
-        <h3>Acciones, en orden</h3>
-        <p id="action-empty" class="muted">Sin acciones.</p>
-        <ol id="action-list"></ol>
-        <div class="buttons small">
-          <button type="button" data-add="photo">+ Foto</button>
-          <button type="button" data-add="startVideo">+ Empezar vídeo</button>
-          <button type="button" data-add="stopVideo">+ Parar vídeo</button>
-          <button type="button" data-add="wait">+ Esperar</button>
+        <div class="field">
+          <label for="p-speed">Velocidad (m/s)</label>
+          <input id="p-speed" type="number" step="0.1">
         </div>
-        <div class="buttons small">
-          <button type="button" id="wp-delete" class="danger">Borrar este waypoint</button>
-        </div>
+        <fieldset class="field">
+          <legend>Modo de disparo</legend>
+          <label><input type="radio" name="capture" value="stop"> Parada con foto</label>
+          <label><input type="radio" name="capture" value="interval" disabled> Disparo por intervalo</label>
+          <p class="muted">El disparo por intervalo estará disponible cuando se verifique con un KMZ real que DJI Fly lo respeta.</p>
+        </fieldset>
       </section>
 
       <details id="mission-editor" open>
@@ -102,17 +171,19 @@
           <label for="m-name">Nombre</label>
           <input id="m-name" type="text" maxlength="60" required>
         </div>
-        <div class="field">
-          <label for="m-height">Altura por defecto (m)</label>
-          <input id="m-height" type="number" step="0.1">
-        </div>
-        <div class="field">
-          <label for="m-speed">Velocidad por defecto (m/s)</label>
-          <input id="m-speed" type="number" step="0.1">
-        </div>
-        <div class="field">
-          <label for="m-gimbalPitch">Gimbal por defecto (°)</label>
-          <input id="m-gimbalPitch" type="number" step="1">
+        <div data-mode="route">
+          <div class="field">
+            <label for="m-height">Altura por defecto (m)</label>
+            <input id="m-height" type="number" step="0.1">
+          </div>
+          <div class="field">
+            <label for="m-speed">Velocidad por defecto (m/s)</label>
+            <input id="m-speed" type="number" step="0.1">
+          </div>
+          <div class="field">
+            <label for="m-gimbalPitch">Gimbal por defecto (°)</label>
+            <input id="m-gimbalPitch" type="number" step="1">
+          </div>
         </div>
         <div class="field">
           <label for="m-finish">Al terminar</label>
@@ -121,6 +192,7 @@
             <option value="autoLand">Aterrizar</option>
             <option value="noAction">Quedarse en el sitio</option>
           </select>
+          <p class="muted" data-mode="area">Solo en la última parte; las demás vuelven a casa para cambiar la batería.</p>
         </div>
         <div class="field">
           <label for="m-signal">Si se pierde la señal</label>

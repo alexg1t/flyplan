@@ -86,7 +86,35 @@
       </ol>
     </details>
 
-    <h2>3. Antes de volar</h2>
+    <h2 id="ortomosaico">3. Ortomosaico (área de mapeo)</h2>
+    <p>
+      En una misión de tipo <b>Área de mapeo</b>, los vértices que marcas solo delimitan la zona:
+      el dron no vuela sobre ellos. flyplan calcula las pasadas en ida y vuelta y un punto de foto
+      cada pocos metros, y el dron se detiene a hacer cada foto.
+    </p>
+    <h3>Ajustes de la cámara en DJI Fly</h3>
+    <ul>
+      <li>Cámara principal (gran angular, 24 mm) y gimbal a -90°: flyplan lo fija en la misión.</li>
+      <li>La <b>misma resolución</b> que elegiste en flyplan (12 MP o 50 MP). Si no coincide, el GSD real será distinto.</li>
+      <li>Formato 4:3 y JPEG (o JPEG + DNG si vas a procesar en RAW).</li>
+      <li>Enfoque manual a infinito.</li>
+      <li>Exposición manual o con la velocidad de obturación fija: 1/1000 s o más rápida si hay luz, ISO lo más bajo posible.</li>
+      <li>Balance de blancos fijo (por ejemplo, "Soleado"), para que todas las fotos tengan el mismo color.</li>
+    </ul>
+    <p class="muted">
+      flyplan usa "Parada con foto" porque el Air 3S no tiene obturador mecánico: si hiciera las
+      fotos en movimiento, podrían salir deformadas.
+    </p>
+    <h3>Volar una misión en varias partes</h3>
+    <ol>
+      <li>Cada parte dura como máximo 25 minutos de mapeo, una por batería. Descarga todas.</li>
+      <li>Crea en DJI Fly una misión ficticia por parte e instala cada KMZ en la suya (sección 2).</li>
+      <li>Vuela la parte 1. Al terminar, el dron vuelve a casa.</li>
+      <li>Cambia la batería y vuela la parte 2. Empieza en el punto P2 que ves en el mapa de flyplan.</li>
+      <li>Repite hasta la última parte, que termina con la acción que elegiste en "Al terminar".</li>
+    </ol>
+
+    <h2>4. Antes de volar</h2>
     <ul>
       <li><b>No vuelvas a guardar la misión en DJI Fly</b> después de instalarla: DJI Fly podría
         reordenar los waypoints.</li>

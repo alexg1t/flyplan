@@ -2,12 +2,14 @@
 import { LIMITS, emptyMission, effective, distance, duration, validate, isClosed, closeRoute } from './mission.js';
 import { WPML_VERIFIED, buildFiles, parseMission, parseProfile } from './wpml.js';
 import { zip, unzip } from './kmz.js';
+import { MAPPING_LIMITS, emptyArea, gsd, heightForGsd, computeGrid, toMissions } from './grid.js';
 
 const MISSION_KEY = 'flyplan.mission';
 const PROFILE_KEY = 'flyplan.droneProfile';
 const FIELDS = ['height', 'speed', 'gimbalPitch'];
 const ACTION_LABELS = { photo: 'Foto', startVideo: 'Empezar vídeo', stopVideo: 'Parar vídeo', wait: 'Esperar' };
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+const PART_COLORS = ['#ffd400', '#00e5ff'];
 
 const $ = (id) => document.getElementById(id);
 
@@ -50,11 +52,30 @@ function showIssues(title, issues, kind) {
 
 // ---------- Persistencia ----------
 
-const isMission = (m) =>
-  typeof m?.name === 'string' &&
+const finite = (...values) => values.every(Number.isFinite);
+
+const isRoute = (m) =>
+  (m?.type ?? 'route') === 'route' &&
+  typeof m.name === 'string' &&
   FIELDS.every((f) => Number.isFinite(m.defaults?.[f])) &&
   Array.isArray(m.waypoints) &&
-  m.waypoints.every((w) => Number.isFinite(w.lat) && Number.isFinite(w.lon) && Array.isArray(w.actions));
+  m.waypoints.every((w) => finite(w.lat, w.lon) && Array.isArray(w.actions));
+
+const validParams = (p) =>
+  finite(p?.height, p?.speed, p?.frontOverlap, p?.sideOverlap) &&
+  (p.direction === null || (p.direction >= 0 && p.direction < 180)) &&
+  [12, 50].includes(p.resolution) &&
+  ['stop', 'interval'].includes(p.captureMode);
+
+const isAreaMission = (m) =>
+  m?.type === 'area' &&
+  typeof m.name === 'string' &&
+  Array.isArray(m.vertices) &&
+  m.vertices.every((v) => finite(v.lat, v.lon)) &&
+  typeof m.closed === 'boolean' &&
+  validParams(m.params);
+
+const isMission = (m) => isRoute(m) || isAreaMission(m);
 
 const isProfile = (p) =>
   typeof p?.namespace === 'string' && Number.isFinite(p.droneEnumValue) && Number.isFinite(p.droneSubEnumValue);
@@ -92,20 +113,33 @@ function store(key, value) {
 
 let mission = load(MISSION_KEY, isMission, 'La misión') ?? emptyMission();
 let profile = load(PROFILE_KEY, isProfile, 'El KMZ de referencia');
-let selected = null;
+let selected = null; // waypoint seleccionado (ruta)
+let selectedVertex = null; // vértice seleccionado (área)
+let grid = null; // última cuadrícula calculada (área)
 
+const isArea = () => mission.type === 'area';
+const hasContent = () => (isArea() ? mission.vertices.length : mission.waypoints.length) > 0;
 const current = () => mission.waypoints[selected];
 
 /** Guarda y redibuja. full=false no redibuja los formularios (para no perder el foco). */
 function commit(full = true) {
   store(MISSION_KEY, mission);
-  renderMap();
-  renderStats();
-  renderList();
-  if (full) {
-    renderEditor();
-    renderMissionForm();
+  const mode = isArea() ? 'area' : 'route';
+  for (const el of document.querySelectorAll('[data-mode]')) el.hidden = el.dataset.mode !== mode;
+  document.querySelector(`input[name="mission-type"][value="${mode}"]`).checked = true;
+  if (isArea()) {
+    markers.clearLayers();
+    route.setLatLngs([]);
+    renderArea();
+    if (full) renderAreaForm();
+  } else {
+    areaLayer.clearLayers();
+    renderMap();
+    renderStats();
+    renderList();
+    if (full) renderEditor();
   }
+  if (full) renderMissionForm();
 }
 
 function select(i) {
@@ -134,6 +168,10 @@ tiles.on('tileload', () => {
 
 const route = L.polyline([], { color: '#ffd400', weight: 3 }).addTo(map);
 const markers = L.layerGroup().addTo(map);
+const areaLayer = L.layerGroup().addTo(map);
+const photoRenderer = L.canvas({ padding: 0.5 });
+
+const ll = (p) => [p.lat, p.lon];
 
 function icon(label, isSelected) {
   const width = String(label).length > 2 ? 44 : 26; // "1/12" necesita más ancho que "12"
@@ -163,7 +201,7 @@ function renderMap() {
     if (closed && i === n - 1) return;
     const label = closed && i === 0 ? `1/${n}` : i + 1;
     const isSelected = linked(i).includes(selected);
-    const marker = L.marker([w.lat, w.lon], { draggable: true, icon: icon(label, isSelected), title: `Waypoint ${label}` });
+    const marker = L.marker(ll(w), { draggable: true, icon: icon(label, isSelected), title: `Waypoint ${label}` });
     marker.on('click', () => {
       if (i === 0 && n >= 3 && !closed) closeRouteFromMap();
       else select(i);
@@ -181,15 +219,20 @@ function renderMap() {
     });
     markers.addLayer(marker);
   });
-  route.setLatLngs(mission.waypoints.map((w) => [w.lat, w.lon]));
+  route.setLatLngs(mission.waypoints.map(ll));
   $('route-hint').hidden = n < 3 || closed;
 }
 
-function fitRoute() {
-  if (mission.waypoints.length) map.fitBounds(route.getBounds(), { padding: [40, 40], maxZoom: 18 });
+function fitMission() {
+  const points = isArea() ? mission.vertices : mission.waypoints;
+  if (points.length) map.fitBounds(L.latLngBounds(points.map(ll)), { padding: [40, 40], maxZoom: 18 });
 }
 
 map.on('click', (e) => {
+  if (isArea()) {
+    addVertex(e.latlng);
+    return;
+  }
   if (mission.waypoints.length >= LIMITS.waypoints.max) {
     notify(`Máximo ${LIMITS.waypoints.max} waypoints por misión (límite de DJI Fly).`, 'warn');
     return;
@@ -207,16 +250,216 @@ map.on('click', (e) => {
   commit();
 });
 
-// ---------- Panel ----------
+// ---------- Área de mapeo ----------
+
+function addVertex({ lat, lng }) {
+  if (mission.closed) {
+    selectedVertex = null;
+  } else {
+    mission.vertices.push({ lat, lon: lng });
+    selectedVertex = mission.vertices.length - 1;
+  }
+  commit();
+}
+
+const flag = (latlng, text) =>
+  L.tooltip({ permanent: true, direction: 'top', className: 'flag', offset: [0, -6] }).setLatLng(latlng).setContent(text);
+
+function renderArea() {
+  const { vertices, closed } = mission;
+  const n = vertices.length;
+  areaLayer.clearLayers();
+  grid = closed ? computeGrid(mission) : null;
+
+  const outlineStyle = { color: '#ffffff', weight: 2, dashArray: '6 4', interactive: false };
+  const outline = closed
+    ? L.polygon(vertices.map(ll), { ...outlineStyle, fillOpacity: 0.12 })
+    : L.polyline(vertices.map(ll), outlineStyle);
+  areaLayer.addLayer(outline);
+
+  if (grid?.photos) {
+    grid.parts.forEach((part, k) => {
+      const points = grid.photos.slice(part.start, part.end).map(ll);
+      areaLayer.addLayer(L.polyline(points, { color: PART_COLORS[k % 2], weight: 2, interactive: false }));
+      if (k > 0) areaLayer.addLayer(flag(points[0], `P${k + 1}`));
+    });
+    for (const p of grid.photos) {
+      areaLayer.addLayer(L.circleMarker(ll(p), {
+        renderer: photoRenderer, radius: 3, color: '#000', weight: 1, fillColor: '#fff', fillOpacity: 1, interactive: false,
+      }));
+    }
+    areaLayer.addLayer(flag(ll(grid.photos[0]), 'Inicio'));
+    areaLayer.addLayer(flag(ll(grid.photos.at(-1)), 'Fin'));
+  }
+
+  vertices.forEach((v, i) => {
+    const closer = !closed && i === 0 && n >= 3;
+    const marker = L.marker(ll(v), {
+      draggable: true,
+      title: closer ? 'Vértice 1: haz clic para cerrar el área' : `Vértice ${i + 1}`,
+      icon: L.divIcon({
+        className: 'vx-marker',
+        html: `<div class="vx-icon${i === selectedVertex ? ' selected' : ''}${closer ? ' closer' : ''}"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      }),
+    });
+    marker.on('click', () => {
+      if (closer) mission.closed = true;
+      else selectedVertex = i;
+      commit();
+    });
+    marker.on('drag', (e) => {
+      const points = vertices.map(ll);
+      points[i] = e.target.getLatLng();
+      outline.setLatLngs(points);
+    });
+    marker.on('dragend', (e) => {
+      const { lat, lng } = e.target.getLatLng();
+      Object.assign(vertices[i], { lat, lon: lng });
+      selectedVertex = i;
+      commit();
+    });
+    areaLayer.addLayer(marker);
+  });
+
+  // Un "+" en el centro de cada lado inserta un vértice ahí (FR-002).
+  if (closed) {
+    vertices.forEach((a, i) => {
+      const b = vertices[(i + 1) % n];
+      const mid = L.marker([(a.lat + b.lat) / 2, (a.lon + b.lon) / 2], {
+        title: 'Añadir un vértice aquí',
+        icon: L.divIcon({ className: 'mid-marker', html: '<div class="mid-icon">+</div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
+      });
+      mid.on('click', () => {
+        vertices.splice(i + 1, 0, { lat: (a.lat + b.lat) / 2, lon: (a.lon + b.lon) / 2 });
+        selectedVertex = i + 1;
+        commit();
+      });
+      areaLayer.addLayer(mid);
+    });
+  }
+  renderAreaSummary();
+}
+
+function setStatus(text, kind) {
+  const el = $('area-status');
+  el.textContent = text;
+  el.className = kind ? `msg ${kind}` : 'muted';
+}
+
+function renderAreaSummary() {
+  const set = (id, text) => {
+    $(id).textContent = text;
+  };
+  const stats = grid?.stats;
+  set('a-area', stats ? `${number(stats.areaHa, 2)} ha` : '—');
+  set('a-gsd', `${number(gsd(mission.params.height, mission.params.resolution), 2)} cm/px`);
+  set('a-lines', stats ? stats.lines : '—');
+  set('a-photos', stats ? stats.photos : '—');
+  set('a-distance', stats ? formatDistance(stats.distance) : '—');
+  set('a-time', stats ? formatDuration(stats.duration) : '—');
+  set('a-batteries', stats ? stats.batteries : '—');
+
+  const n = mission.vertices.length;
+  if (!mission.closed) {
+    setStatus(n < 3
+      ? 'Marca en el mapa los vértices del área (al menos 3). Los vértices no se vuelan: solo delimitan la zona.'
+      : 'Haz clic en el vértice 1 (borde amarillo) para cerrar el área.');
+  } else if (grid === null) {
+    setStatus('El área no es válida: dos lados se cruzan. Mueve un vértice para corregirla.', 'error');
+  } else if (grid.error) {
+    setStatus(grid.error, 'error');
+  } else if (stats.batteries > 1) {
+    setStatus(`Hacen falta ${stats.batteries} baterías: la misión se divide en ${stats.batteries} partes (P2, P3… en el mapa).`, 'warn');
+  } else {
+    setStatus('Arrastra los vértices o pulsa "+" en un lado para añadir uno.');
+  }
+}
+
+function renderAreaForm() {
+  const p = mission.params;
+  setValue($('p-height'), p.height);
+  setValue($('p-gsd'), gsd(p.height, p.resolution).toFixed(2));
+  $('p-resolution').value = String(p.resolution);
+  setValue($('p-front'), p.frontOverlap);
+  setValue($('p-side'), p.sideOverlap);
+  setValue($('p-speed'), p.speed);
+  $('p-direction-auto').checked = p.direction === null;
+  $('p-direction').disabled = p.direction === null;
+  setValue($('p-direction'), Math.round(p.direction ?? grid?.direction ?? 0));
+  document.querySelector(`input[name="capture"][value="${p.captureMode}"]`).checked = true;
+}
+
+$('vx-delete').addEventListener('click', () => {
+  if (selectedVertex === null) {
+    notify('Selecciona un vértice en el mapa para borrarlo.', 'warn');
+    return;
+  }
+  mission.vertices.splice(selectedVertex, 1);
+  if (mission.vertices.length < 3) mission.closed = false;
+  selectedVertex = null;
+  commit();
+});
+
+for (const [key, id] of [['height', 'p-height'], ['speed', 'p-speed'], ['frontOverlap', 'p-front'], ['sideOverlap', 'p-side']]) {
+  $(id).addEventListener('input', (e) => {
+    if (Number.isFinite(e.target.valueAsNumber)) {
+      mission.params[key] = e.target.valueAsNumber;
+      commit();
+    }
+  });
+}
+$('p-height').min = LIMITS.height.min;
+$('p-height').max = LIMITS.height.max;
+$('p-speed').min = LIMITS.speed.min;
+$('p-speed').max = LIMITS.speed.max;
+for (const id of ['p-front', 'p-side']) {
+  $(id).min = MAPPING_LIMITS.overlap.min;
+  $(id).max = MAPPING_LIMITS.overlap.max;
+}
+$('p-gsd').addEventListener('input', (e) => {
+  const value = e.target.valueAsNumber;
+  if (value > 0) {
+    mission.params.height = Math.round(heightForGsd(value, mission.params.resolution) * 10) / 10;
+    commit();
+  }
+});
+$('p-resolution').addEventListener('change', (e) => {
+  mission.params.resolution = Number(e.target.value);
+  commit();
+});
+$('p-direction-auto').addEventListener('change', (e) => {
+  mission.params.direction = e.target.checked ? null : Math.round(grid?.direction ?? 0);
+  commit();
+});
+$('p-direction').addEventListener('input', (e) => {
+  const value = e.target.valueAsNumber;
+  if (value >= 0 && value < 180) {
+    mission.params.direction = value;
+    commit();
+  }
+});
+for (const radio of document.querySelectorAll('input[name="capture"]')) {
+  radio.addEventListener('change', () => {
+    mission.params.captureMode = radio.value;
+    commit();
+  });
+}
+
+// ---------- Panel de la ruta ----------
 
 const number = (n, digits = 1) => n.toLocaleString('es-ES', { maximumFractionDigits: digits });
+const formatDistance = (meters) => (meters < 1000 ? `${Math.round(meters)} m` : `${number(meters / 1000, 2)} km`);
+function formatDuration(totalSeconds) {
+  const seconds = Math.round(totalSeconds);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
 
 function renderStats() {
-  const meters = distance(mission);
-  const seconds = Math.round(duration(mission));
   $('stat-count').textContent = mission.waypoints.length;
-  $('stat-distance').textContent = meters < 1000 ? `${Math.round(meters)} m` : `${number(meters / 1000, 2)} km`;
-  $('stat-time').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  $('stat-distance').textContent = formatDistance(distance(mission));
+  $('stat-time').textContent = formatDuration(duration(mission));
 }
 
 function move(list, i, step) {
@@ -314,7 +557,7 @@ function renderActions(w) {
 
 function renderMissionForm() {
   setValue($('m-name'), mission.name);
-  for (const f of FIELDS) setValue($(`m-${f}`), mission.defaults[f]);
+  if (!isArea()) for (const f of FIELDS) setValue($(`m-${f}`), mission.defaults[f]);
   $('m-finish').value = mission.finishAction;
   $('m-signal').value = mission.onSignalLost;
 }
@@ -325,7 +568,7 @@ function renderProfile() {
     : 'Sin KMZ de referencia: lo necesitas para exportar.';
 }
 
-// ---------- Formularios ----------
+// ---------- Formularios de la ruta ----------
 
 for (const f of FIELDS) {
   for (const prefix of ['wp', 'm']) {
@@ -374,6 +617,8 @@ for (const b of document.querySelectorAll('[data-add]')) {
 }
 $('wp-delete').addEventListener('click', () => removeWaypoint(selected));
 
+// ---------- Formulario de la misión (los dos modos) ----------
+
 $('m-name').addEventListener('input', (e) => {
   mission.name = e.target.value;
   commit();
@@ -386,6 +631,20 @@ $('m-signal').addEventListener('change', (e) => {
   mission.onSignalLost = e.target.value;
   commit();
 });
+
+for (const radio of document.querySelectorAll('input[name="mission-type"]')) {
+  radio.addEventListener('change', () => {
+    if ((radio.value === 'area') === isArea()) return;
+    if (hasContent() && !confirm('Cambiar el tipo de misión sustituye la misión en curso. ¿Continuar?')) {
+      commit(); // vuelve a marcar el tipo actual
+      return;
+    }
+    mission = radio.value === 'area' ? emptyArea() : emptyMission();
+    selected = null;
+    selectedVertex = null;
+    commit();
+  });
+}
 
 // ---------- Búsqueda (FR-001) ----------
 
@@ -453,29 +712,85 @@ function loadReference(files) {
 
 function openMission(files, name) {
   const { mission: loaded, warnings } = parseMission(files, name);
-  if (mission.waypoints.length && !confirm('Abrir este KMZ sustituye la misión en curso. ¿Continuar?')) return;
+  if (hasContent() && !confirm('Abrir este KMZ sustituye la misión en curso. ¿Continuar?')) return;
   mission = loaded;
   selected = null;
   commit();
-  fitRoute();
+  fitMission();
   const title = `Misión "${mission.name}" abierta: ${mission.waypoints.length} waypoints.`;
   if (warnings.length) showIssues(`${title} Avisos:`, warnings.map((message) => ({ message })), 'warn');
   else notify(title);
 }
 
 $('btn-new').addEventListener('click', () => {
-  if (mission.waypoints.length && !confirm('Empezar una misión nueva sustituye la misión en curso. ¿Continuar?')) return;
-  mission = emptyMission();
+  if (hasContent() && !confirm('Empezar una misión nueva sustituye la misión en curso. ¿Continuar?')) return;
+  mission = isArea() ? emptyArea() : emptyMission();
   selected = null;
+  selectedVertex = null;
   commit();
 });
 
 const fileName = (name) => name.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'mision';
 
+function kmzLink(m, file, text) {
+  const blob = new Blob([zip(buildFiles(m, profile))], { type: 'application/vnd.google-earth.kmz' });
+  const a = link(URL.createObjectURL(blob), text);
+  a.download = file;
+  return a;
+}
+
+/** Un aviso por tipo: en un área todas las fotos tienen la misma altura. */
+function uniqueWarnings(warnings) {
+  const seen = new Set();
+  return warnings
+    .filter((w) => !seen.has(w.field) && seen.add(w.field))
+    .map((w) => w.message.replace(/^Waypoint \d+: (.)/, (_, c) => c.toUpperCase()));
+}
+
+function exportArea() {
+  const g = mission.closed ? computeGrid(mission) : null;
+  if (!g || g.error) {
+    notify(g?.error ?? 'Cierra un área válida antes de exportar.', 'error');
+    return;
+  }
+  const missions = toMissions(mission, g);
+  const n = missions.length;
+  const errors = missions.flatMap((m, k) =>
+    validate(m).errors.map((e) => ({ message: n > 1 ? `Parte ${k + 1}: ${e.message}` : e.message }))
+  );
+  if (errors.length) {
+    showIssues('No se puede exportar. Corrige esto:', errors, 'error');
+    return;
+  }
+  if (!profile) {
+    notify('Para exportar necesitas cargar el KMZ de referencia de tu DJI Fly. ', 'warn',
+      link('ayuda.html#referencia', 'Cómo obtenerlo'));
+    return;
+  }
+  const warnings = uniqueWarnings(missions.flatMap((m) => validate(m).warnings));
+  if (warnings.length && !confirm(`Revisa estos avisos antes de exportar:\n\n${warnings.map((w) => `• ${w}`).join('\n')}\n\n¿Exportar igualmente?`)) return;
+
+  const base = fileName(mission.name);
+  const list = document.createElement('ul');
+  missions.forEach((m, k) => {
+    const li = document.createElement('li');
+    li.append(n === 1
+      ? kmzLink(m, `${base}.kmz`, 'Descargar KMZ')
+      : kmzLink(m, `${base}-parte-${k + 1}-de-${n}.kmz`, `Parte ${k + 1} de ${n}`));
+    list.append(li);
+  });
+  notify(n === 1 ? 'KMZ listo. ' : `${n} KMZ listos, uno por batería. `, 'info',
+    link('ayuda.html#ortomosaico', 'Cómo volar un ortomosaico'), list);
+}
+
 $('btn-export').addEventListener('click', () => {
   if (!WPML_VERIFIED) {
     notify('Exportación desactivada hasta verificar el formato con tu KMZ real de DJI Fly. ', 'warn',
       link('ayuda.html#referencia', 'Cómo obtenerlo'));
+    return;
+  }
+  if (isArea()) {
+    exportArea();
     return;
   }
   const { errors, warnings } = validate(mission);
@@ -505,4 +820,4 @@ $('btn-export').addEventListener('click', () => {
 
 commit();
 renderProfile();
-fitRoute();
+fitMission();
