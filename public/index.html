@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>flyplan · Waypoints para DJI Fly</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+        integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+          integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g=="
+          crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <header class="top">
+    <h1>flyplan</h1>
+    <span class="tag">Waypoints para DJI Fly · DJI Air 3S</span>
+    <nav><a href="ayuda.html">Ayuda y transferencia al móvil</a></nav>
+  </header>
+  <p class="safety" role="note">
+    flyplan no sustituye tu criterio como piloto, la comprobación del espacio aéreo ni la revisión
+    de la misión en DJI Fly antes de despegar.
+  </p>
+
+  <main class="layout">
+    <div id="map" aria-label="Mapa: haz clic para añadir waypoints"></div>
+
+    <aside id="panel">
+      <form id="search" role="search">
+        <input id="search-input" type="search" placeholder="Lugar o coordenadas: 40.4168, -3.7038"
+               aria-label="Buscar un lugar o unas coordenadas">
+      </form>
+
+      <div id="messages" aria-live="polite"></div>
+
+      <section class="stats" aria-label="Resumen de la misión">
+        <div><span>Waypoints</span><b id="stat-count">0</b></div>
+        <div><span>Distancia</span><b id="stat-distance">0 m</b></div>
+        <div><span>Tiempo estimado</span><b id="stat-time">0:00</b></div>
+      </section>
+
+      <div class="buttons">
+        <button type="button" id="btn-export" class="primary">Exportar KMZ</button>
+        <button type="button" id="btn-reference">Cargar KMZ de referencia</button>
+        <button type="button" id="btn-open">Abrir KMZ</button>
+        <button type="button" id="btn-new">Nueva misión</button>
+      </div>
+      <p id="profile-status" class="muted"></p>
+      <input id="file-input" type="file" accept=".kmz" hidden>
+
+      <section>
+        <h2>Waypoints</h2>
+        <p id="wp-empty" class="muted">Haz clic en el mapa para añadir el primer waypoint.</p>
+        <ol id="wp-list"></ol>
+      </section>
+
+      <section id="wp-editor" hidden>
+        <h2>Waypoint <span id="wp-number"></span></h2>
+        <div class="field">
+          <label for="wp-height">Altura sobre el despegue (m)</label>
+          <input id="wp-height" type="number" step="0.1">
+          <label class="inherit"><input type="checkbox" id="wp-height-inherit"> Usar valor de la misión</label>
+        </div>
+        <div class="field">
+          <label for="wp-speed">Velocidad hasta el siguiente punto (m/s)</label>
+          <input id="wp-speed" type="number" step="0.1">
+          <label class="inherit"><input type="checkbox" id="wp-speed-inherit"> Usar valor de la misión</label>
+        </div>
+        <div class="field">
+          <label for="wp-gimbalPitch">Ángulo del gimbal (°)</label>
+          <input id="wp-gimbalPitch" type="number" step="1">
+          <label class="inherit"><input type="checkbox" id="wp-gimbalPitch-inherit"> Usar valor de la misión</label>
+        </div>
+        <fieldset class="field">
+          <legend>Rumbo del dron</legend>
+          <label><input type="radio" name="heading" value="follow"> Seguir la ruta</label>
+          <label><input type="radio" name="heading" value="fixed"> Ángulo fijo</label>
+          <input id="wp-heading" type="number" min="0" max="359" step="1"
+                 aria-label="Ángulo de rumbo en grados, 0 es el norte"> °
+        </fieldset>
+
+        <h3>Acciones, en orden</h3>
+        <p id="action-empty" class="muted">Sin acciones.</p>
+        <ol id="action-list"></ol>
+        <div class="buttons small">
+          <button type="button" data-add="photo">+ Foto</button>
+          <button type="button" data-add="startVideo">+ Empezar vídeo</button>
+          <button type="button" data-add="stopVideo">+ Parar vídeo</button>
+          <button type="button" data-add="wait">+ Esperar</button>
+        </div>
+        <div class="buttons small">
+          <button type="button" id="wp-delete" class="danger">Borrar este waypoint</button>
+        </div>
+      </section>
+
+      <details id="mission-editor" open>
+        <summary>Ajustes de la misión</summary>
+        <div class="field">
+          <label for="m-name">Nombre</label>
+          <input id="m-name" type="text" maxlength="60" required>
+        </div>
+        <div class="field">
+          <label for="m-height">Altura por defecto (m)</label>
+          <input id="m-height" type="number" step="0.1">
+        </div>
+        <div class="field">
+          <label for="m-speed">Velocidad por defecto (m/s)</label>
+          <input id="m-speed" type="number" step="0.1">
+        </div>
+        <div class="field">
+          <label for="m-gimbalPitch">Gimbal por defecto (°)</label>
+          <input id="m-gimbalPitch" type="number" step="1">
+        </div>
+        <div class="field">
+          <label for="m-finish">Al terminar</label>
+          <select id="m-finish">
+            <option value="goHome">Volver a casa</option>
+            <option value="autoLand">Aterrizar</option>
+            <option value="noAction">Quedarse en el sitio</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="m-signal">Si se pierde la señal</label>
+          <select id="m-signal">
+            <option value="lostAction">Volver a casa (RTH)</option>
+            <option value="continue">Continuar la misión</option>
+          </select>
+        </div>
+      </details>
+    </aside>
+  </main>
+</body>
+</html>

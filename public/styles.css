@@ -1,0 +1,171 @@
+:root {
+  --ink: #1b2733;
+  --muted: #5b6b7a;
+  --line: #d5dde3;
+  --bg: #f5f8fa;
+  --panel: #ffffff;
+  --accent: #0e7c86;
+  --accent-ink: #ffffff;
+  --warn-bg: #fff4e0;
+  --warn: #b26b00;
+  --error-bg: #fdeaea;
+  --error: #b42318;
+  --wp: #ffd400;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+a { color: var(--accent); }
+
+.top {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--ink);
+  color: #fff;
+}
+.top h1 { margin: 0; font-size: 20px; }
+.top .tag { color: #b8c4cf; font-size: 13px; }
+.top nav { margin-left: auto; }
+.top nav a { color: #9fe3e8; font-size: 14px; }
+
+.safety {
+  margin: 0;
+  padding: 6px 16px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: 13px;
+  border-bottom: 1px solid #f0d9ae;
+}
+
+.layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  min-height: 0;
+}
+
+#map { min-height: 60vh; }
+
+#panel {
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  padding: 12px 16px 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 80px);
+}
+
+h2 { font-size: 15px; margin: 18px 0 8px; }
+h3 { font-size: 13px; margin: 14px 0 6px; color: var(--muted); }
+.muted { color: var(--muted); font-size: 13px; margin: 4px 0; }
+
+input[type="search"], input[type="text"], input[type="number"], select {
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+}
+input[type="search"] { width: 100%; }
+input[type="number"] { width: 110px; }
+input:invalid { border-color: var(--error); background: var(--error-bg); }
+input:disabled { color: var(--muted); background: var(--bg); }
+
+button {
+  font: inherit;
+  font-size: 14px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.danger { color: var(--error); }
+button:disabled { opacity: 0.5; cursor: default; }
+
+.buttons { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.buttons.small button { font-size: 13px; padding: 4px 8px; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+.stats div { background: var(--bg); border-radius: 6px; padding: 6px 8px; }
+.stats span { display: block; font-size: 11px; color: var(--muted); }
+.stats b { font-size: 16px; }
+
+#messages:empty { display: none; }
+.msg { margin: 8px 0; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+.msg.info { background: #e3f2f3; }
+.msg.warn { background: var(--warn-bg); color: #6b4300; }
+.msg.error { background: var(--error-bg); color: var(--error); }
+.msg ul { margin: 6px 0 0; padding-left: 18px; }
+.msg button { font-size: 12px; padding: 1px 6px; margin-left: 4px; }
+
+#wp-list, #action-list { list-style: none; margin: 0; padding: 0; }
+#wp-list li, #action-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+#wp-list li .grow, #action-list li .grow { flex: 1; text-align: left; border: 0; padding: 4px; }
+#wp-list li.selected { background: #fff8cc; }
+#wp-list li button:not(.grow), #action-list li button { padding: 2px 7px; font-size: 12px; }
+#action-list input[type="number"] { width: 64px; padding: 2px 4px; }
+
+.field { margin: 8px 0; border: 0; padding: 0; }
+.field > label:first-child, .field legend { display: block; font-size: 13px; color: var(--muted); margin-bottom: 3px; }
+.field .inherit { font-size: 13px; margin-left: 8px; }
+fieldset.field label { font-size: 14px; margin-right: 10px; }
+
+details summary { cursor: pointer; font-weight: 600; margin-top: 18px; }
+
+.wp-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--wp);
+  color: #000;
+  font: 700 12px "Segoe UI", system-ui, sans-serif;
+  border: 2px solid #000;
+}
+.wp-icon.selected { background: #fff; outline: 3px solid var(--wp); }
+
+@media (max-width: 800px) {
+  .layout { grid-template-columns: 1fr; }
+  #map { min-height: 55vh; }
+  #panel { border-left: 0; border-top: 1px solid var(--line); max-height: none; }
+  .top .tag { display: none; }
+}
+
+/* Página de ayuda */
+.doc { max-width: 760px; margin: 0 auto; padding: 16px 16px 48px; line-height: 1.55; }
+.doc h2 { font-size: 20px; margin-top: 32px; }
+.doc h3 { font-size: 16px; color: var(--ink); }
+.doc code { font-family: Consolas, monospace; font-size: 13px; background: var(--bg); padding: 1px 4px; border-radius: 4px; word-break: break-all; }
+.doc details { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; margin: 10px 0; }
+.doc details summary { margin: 0; }
+.doc .callout { padding: 10px 14px; border-radius: 6px; background: var(--warn-bg); color: #6b4300; }
+.doc table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.doc th, .doc td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }

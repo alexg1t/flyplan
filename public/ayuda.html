@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>flyplan · Ayuda y transferencia al móvil</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <h1>flyplan</h1>
+    <span class="tag">Ayuda y transferencia al móvil</span>
+    <nav><a href="index.html">Volver al editor</a></nav>
+  </header>
+  <p class="safety" role="note">
+    flyplan no sustituye tu criterio como piloto, la comprobación del espacio aéreo ni la revisión
+    de la misión en DJI Fly antes de despegar.
+  </p>
+
+  <main class="doc">
+    <p>
+      El DJI Air 3S no permite que otras apps le envíen misiones. Por eso, una misión de flyplan se
+      instala <b>sustituyendo el archivo de una misión que creas antes en DJI Fly</b>. Esta página
+      explica cómo hacerlo en Android y en iOS.
+    </p>
+
+    <h2 id="referencia">1. El KMZ de referencia (una sola vez)</h2>
+    <p>
+      Para exportar, flyplan necesita un KMZ creado por tu propia app DJI Fly con tu Air 3S. De él
+      copia los datos que identifican a tu dron y la forma exacta de cada acción.
+    </p>
+    <ol>
+      <li>En DJI Fly, con el Air 3S conectado, entra en <b>Waypoints</b>.</li>
+      <li>Crea una misión de 4 waypoints tocando el mapa (no hace falta volar):
+        <table>
+          <tr><th>Waypoint</th><th>Qué configurar</th></tr>
+          <tr><td>WP1</td><td>Acción: hacer foto.</td></tr>
+          <tr><td>WP2</td><td>Acción: empezar a grabar. Rumbo: ángulo fijo (por ejemplo 90°).</td></tr>
+          <tr><td>WP3</td><td>Espera de 3 s. Después, acción: detener grabación.</td></tr>
+          <tr><td>WP4</td><td>Gimbal a -90°.</td></tr>
+        </table>
+      </li>
+      <li>Guárdala con el nombre <b>referencia</b> y cierra DJI Fly.</li>
+      <li>Copia su archivo <code>.kmz</code> al PC siguiendo los pasos de la sección 2 (en lugar de
+        sustituirlo, cópialo).</li>
+      <li>En flyplan, pulsa <b>Cargar KMZ de referencia</b> y elige ese archivo.</li>
+    </ol>
+    <p>El instructivo completo en PDF está en <code>fixtures/instructivo-kmz-referencia.pdf</code> del proyecto.</p>
+
+    <h2 id="transferir">2. Instalar una misión de flyplan en DJI Fly</h2>
+    <p class="callout">
+      Instalar una misión <b>sustituye</b> a la misión ficticia. Crea en DJI Fly una misión solo
+      para esto (por ejemplo, llamada <b>flyplan</b>) y reutilízala cada vez.
+    </p>
+
+    <details open>
+      <summary>Android</summary>
+      <ol>
+        <li>En DJI Fly, crea y guarda una misión ficticia de 2 o 3 waypoints. Cierra DJI Fly.</li>
+        <li>Conecta el móvil al PC con un cable USB y elige <b>Transferencia de archivos</b> en el móvil.</li>
+        <li>En el Explorador de Windows abre:
+          <code>Este equipo › [tu móvil] › Almacenamiento interno › Android › data › dji.go.v5 › files › waypoint</code></li>
+        <li>Ordena por fecha y abre la carpeta de la misión ficticia (la más reciente). Su nombre es
+          un código largo, por ejemplo <code>6103D3C8-E79A-4B48-BBFE-50932D2E1306</code>.</li>
+        <li>Dentro hay un archivo con el mismo código y extensión <code>.kmz</code>. Copia su nombre.</li>
+        <li>Renombra el KMZ que descargaste de flyplan con <b>ese mismo nombre</b> y cópialo a la
+          carpeta, sustituyendo el original.</li>
+        <li>Desconecta el móvil, abre DJI Fly y revisa la misión en el mapa antes de volar.</li>
+      </ol>
+      <p class="muted">Si la carpeta <code>data</code> aparece vacía, prueba otro cable o puerto USB y
+        vuelve a elegir "Transferencia de archivos".</p>
+    </details>
+
+    <details open>
+      <summary>iPhone (iOS)</summary>
+      <ol>
+        <li>En DJI Fly, crea y guarda una misión ficticia de 2 o 3 waypoints. Cierra DJI Fly.</li>
+        <li>Pasa el KMZ de flyplan al iPhone, por ejemplo con OneDrive, AirDrop o el correo, y
+          guárdalo en la app Archivos.</li>
+        <li>En Archivos abre: <code>En mi iPhone › DJI Fly › wayline_mission</code>.</li>
+        <li>Ordena por fecha y abre la carpeta de la misión ficticia. Fíjate en el nombre del
+          <code>.kmz</code> que contiene.</li>
+        <li>Renombra el KMZ de flyplan con <b>ese mismo nombre</b>, muévelo a la carpeta y elige
+          <b>Reemplazar</b>.</li>
+        <li>Abre DJI Fly y revisa la misión en el mapa antes de volar.</li>
+      </ol>
+    </details>
+
+    <h2>3. Antes de volar</h2>
+    <ul>
+      <li><b>No vuelvas a guardar la misión en DJI Fly</b> después de instalarla: DJI Fly podría
+        reordenar los waypoints.</li>
+      <li>Comprueba en el mapa de DJI Fly que los puntos, el orden y las alturas son los que planificaste.</li>
+      <li>Las alturas son <b>respecto al punto de despegue</b>. Si el terreno baja, el dron estará
+        más alto sobre el suelo que lo indicado.</li>
+      <li>Comprueba el espacio aéreo antes de cada vuelo, por ejemplo en la app <b>ENAIRE Drones</b>.
+        En España el límite general es de 120 m sobre el terreno, con el dron siempre a la vista.</li>
+    </ul>
+  </main>
+</body>
+</html>
