@@ -42,8 +42,8 @@ devuelve:
 |-------|------|-------------|
 | `photos` | `{lat, lon}[]` | Puntos de foto en orden de vuelo. En modo parada, son también los waypoints. |
 | `lines` | number | Número de pasadas. |
-| `parts` | `{start: number, end: number}[]` | Índices en `photos` (con `end` exclusivo) de cada parte (R5). |
-| `stats` | objeto | `areaHa`, `gsd` (cm/px), `lines`, `photos`, `distance` (m), `duration` (s), `batteries` (= número de partes). |
+| `parts` | `{start: number, end: number, seconds: number}[]` | Índices en `photos` (con `end` exclusivo) y tiempo estimado de cada parte (R5). |
+| `stats` | objeto | `areaHa`, `gsd` (cm/px), `lines`, `photos`, `distance` (m), `duration` (s, suma del tiempo de las partes), `batteries` (= número de partes). |
 
 ## Missions de exportación (derivadas)
 

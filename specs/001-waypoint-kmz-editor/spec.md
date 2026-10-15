@@ -39,6 +39,8 @@ orden.
 
 1. **Given** el mapa abierto y ninguna misión, **When** el piloto hace clic en 3 puntos del
    mapa, **Then** aparecen 3 waypoints numerados 1, 2 y 3 unidos por una línea en ese orden.
+   (Desde la feature 003, el primer clic coloca el despegue; los 3 clics siguientes añaden
+   los waypoints.)
 2. **Given** una misión válida y ningún KMZ de referencia cargado, **When** el piloto pulsa
    "Exportar", **Then** flyplan le pide el KMZ de referencia y explica cómo obtenerlo de
    DJI Fly.

@@ -33,6 +33,7 @@ export function emptyArea() {
     params: { height: 60, resolution: 12, frontOverlap: 80, sideOverlap: 70, direction: null, speed: 5, captureMode: 'stop' },
     finishAction: 'goHome',
     onSignalLost: 'lostAction',
+    takeoff: null, // {lat, lon} del punto de despegue (feature 003)
   };
 }
 
@@ -184,9 +185,10 @@ export function computeGrid(area) {
     passes.push(Array.from({ length: count }, (_, i) => ({ x: start + i * photoGap, y })));
   }
 
-  // Ida y vuelta, empezando por el extremo más cercano al primer vértice.
+  // Ida y vuelta, empezando por el extremo más cercano al despegue (feature 003, FR-014) o al vértice 1.
+  const anchor = area.takeoff ? rotate(proj.toLocal(area.takeoff), turn) : poly[0];
   const candidates = [passes, [...passes].reverse()].flatMap((ps) => [serpentine(ps, false), serpentine(ps, true)]);
-  const route = candidates.reduce((best, c) => (dist(c[0], poly[0]) < dist(best[0], poly[0]) ? c : best));
+  const route = candidates.reduce((best, c) => (dist(c[0], anchor) < dist(best[0], anchor) ? c : best));
 
   // Partes de 25 min y 200 waypoints como máximo (R5).
   const perPhoto = photoSeconds(params.resolution);
@@ -213,6 +215,11 @@ export function computeGrid(area) {
     parts.at(-2).end--;
     last.start--;
   }
+  // Tiempo de cada parte. Entre partes el dron vuelve a casa, así que ese tramo no cuenta (feature 003).
+  for (const part of parts) {
+    part.seconds = (part.end - part.start) * perPhoto;
+    for (let i = part.start + 1; i < part.end; i++) part.seconds += dist(route[i - 1], route[i]) / params.speed;
+  }
 
   const photos = route.map((q) => proj.toLatLon(rotate(q, -turn)));
   return {
@@ -226,7 +233,7 @@ export function computeGrid(area) {
       lines: passes.length,
       photos: photos.length,
       distance,
-      duration: distance / params.speed + photos.length * perPhoto,
+      duration: parts.reduce((s, p) => s + p.seconds, 0),
       batteries: parts.length,
     },
   };

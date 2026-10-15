@@ -60,7 +60,7 @@ formato con tu KMZ real de DJI Fly". Después de T035 deben dar el resultado de 
 
 | # | Historia | Pasos | Resultado esperado |
 |---|----------|-------|--------------------|
-| 1 | US1 | Clic en 3 puntos del mapa. | Waypoints 1, 2 y 3 unidos por una línea. Distancia y tiempo visibles. |
+| 1 | US1 | Clic en 3 puntos del mapa (desde la feature 003, el primer clic coloca el despegue: hacer 4 clics). | Waypoints 1, 2 y 3 unidos por una línea. Distancia y tiempo visibles. |
 | 2 | US1 | Exportar sin KMZ de referencia. | flyplan pide el KMZ y explica cómo obtenerlo. |
 | 3 | US1 | Cargar `fixtures/referencia-air3s.kmz` y exportar. | Se descarga un `.kmz` y aparece el enlace a la guía. |
 | 4 | US1 | Poner 600 m de altura en un waypoint y exportar. | Exportación bloqueada; el mensaje nombra el waypoint y el valor. |

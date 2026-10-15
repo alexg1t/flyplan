@@ -84,6 +84,9 @@ confirma con una foto o un vuelo real antes de cerrar la feature).
     `ponytail:`; se ajustan con un vuelo real.
   - Partes: se recorren los waypoints en orden y se abre una parte nueva cuando el siguiente
     haría pasar de **1500 s (25 min)** o de **200 waypoints**. Baterías = número de partes.
+  - Tiempo total = suma del tiempo de las partes. El tramo entre la última foto de una parte
+    y la primera de la siguiente no se suma, porque entre partes el dron vuelve a casa
+    (cambio de la feature 003).
   - El tiempo no incluye ir del despegue a la primera foto ni volver. Por eso las partes
     tienen 25 min y no los 45 de la autonomía.
 - **Status**: Provisional (heurística de tiempo).

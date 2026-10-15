@@ -188,6 +188,38 @@ details summary { cursor: pointer; font-weight: 600; margin-top: 18px; }
 }
 .leaflet-tooltip-top.flag::before { border-top-color: var(--ink); }
 
+/* Punto de despegue y simulación (feature 003) */
+.home-icon {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  border: 2px solid #fff;
+  font: 700 13px "Segoe UI", system-ui, sans-serif;
+}
+.drone-icon {
+  width: 100%;
+  height: 100%;
+  background: #ff3b30;
+  clip-path: polygon(50% 0, 100% 100%, 50% 72%, 0 100%);
+  filter: drop-shadow(0 0 2px #000);
+  transform-origin: 50% 50%;
+}
+.sim { border-top: 1px solid var(--line); margin-top: 14px; }
+.sim .speed { font-size: 13px; color: var(--muted); }
+.sim select { padding: 3px 6px; }
+#sim-progress { width: 100%; margin: 6px 0; }
+.sim-read { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; margin: 6px 0; font-size: 13px; }
+.sim-read div { display: flex; justify-content: space-between; gap: 6px; }
+.sim-read .wide { grid-column: 1 / -1; }
+.sim-read dt { color: var(--muted); }
+.sim-read dd { margin: 0; font-weight: 600; text-align: right; }
+#sim-batteries { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+#sim-batteries li.warn { color: var(--warn); font-weight: 600; }
+
 @media (max-width: 800px) {
   .layout { grid-template-columns: 1fr; }
   #map { min-height: 55vh; }

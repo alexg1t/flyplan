@@ -22,6 +22,7 @@ export function emptyMission() {
     finishAction: 'goHome',
     onSignalLost: 'lostAction',
     waypoints: [],
+    takeoff: null, // {lat, lon} del punto de despegue (feature 003)
   };
 }
 
@@ -67,14 +68,28 @@ export function distance(mission) {
   return total;
 }
 
-export function duration(mission) {
-  let total = 0;
+/**
+ * Única fuente del tiempo de una ruta (resumen y simulación).
+ * distances y legs: los n−1 tramos (m y s). stops: las n paradas (s), con sus esperas.
+ */
+export function timing(mission) {
+  const distances = [];
+  const legs = [];
+  const stops = [];
   mission.waypoints.forEach((wp, i) => {
-    total += STOP_SECONDS;
-    for (const a of wp.actions) if (a.type === 'wait') total += a.seconds;
-    if (i < mission.waypoints.length - 1) total += segment(mission, i) / effective(mission, wp, 'speed');
+    stops.push(STOP_SECONDS + wp.actions.reduce((s, a) => s + (a.type === 'wait' ? a.seconds : 0), 0));
+    if (i < mission.waypoints.length - 1) {
+      const d = segment(mission, i);
+      distances.push(d);
+      legs.push(d / effective(mission, wp, 'speed'));
+    }
   });
-  return total;
+  return { distances, legs, stops };
+}
+
+export function duration(mission) {
+  const { legs, stops } = timing(mission);
+  return [...legs, ...stops].reduce((s, x) => s + x, 0);
 }
 
 const RANGES = [

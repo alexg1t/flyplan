@@ -31,7 +31,7 @@ python -m http.server 8000 -d public
 
 | # | Historia | Pasos | Resultado esperado |
 |---|----------|-------|--------------------|
-| 1 | US1 | Elegir "Área de mapeo", marcar 4 vértices y hacer clic en el primero. | Polígono cerrado; aparecen la ruta, los puntos de foto, el inicio, el fin y el resumen. |
+| 1 | US1 | Elegir "Área de mapeo", marcar 4 vértices y hacer clic en el primero (desde la feature 003, el primer clic coloca el despegue). | Polígono cerrado; aparecen la ruta, los puntos de foto, el inicio, el fin y el resumen. |
 | 2 | US1 | Arrastrar un vértice. | La ruta y el resumen se recalculan. |
 | 3 | US1 | Insertar un vértice desde el centro de un lado y borrar otro. | El área cambia y todo se recalcula. |
 | 4 | US1 | Mover un vértice para que dos lados se crucen. | Mensaje de área no válida; sin ruta. |

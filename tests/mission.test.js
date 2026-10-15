@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LIMITS, emptyMission, effective, distance, duration, validate, isClosed, closeRoute } from '../public/js/mission.js';
+import { LIMITS, emptyMission, effective, distance, duration, validate, isClosed, closeRoute, timing } from '../public/js/mission.js';
 
 const wp = (lat, lon, extra = {}) => ({
   lat, lon, height: null, speed: null, gimbalPitch: null, heading: null, actions: [], ...extra,
@@ -33,6 +33,17 @@ test('duration: tramo / velocidad + 2 s por waypoint + esperas', () => {
   const m = mission(wp(40, -3, { actions: [{ type: 'wait', seconds: 3 }] }), wp(40.001, -3));
   const expected = distance(m) / 5 + 2 * 2 + 3;
   assert.ok(Math.abs(duration(m) - expected) < 1e-9);
+});
+
+test('timing: duration es la suma de tramos y paradas, con esperas', () => {
+  const m = mission(wp(40, -3, { actions: [{ type: 'wait', seconds: 3 }] }), wp(40.001, -3), wp(40.002, -3, { speed: 2 }));
+  const { distances, legs, stops } = timing(m);
+  assert.equal(distances.length, 2);
+  assert.equal(legs.length, 2);
+  assert.deepEqual(stops, [5, 2, 2]);
+  assert.ok(Math.abs(legs[0] - distances[0] / 5) < 1e-9);
+  assert.ok(Math.abs(duration(m) - [...legs, ...stops].reduce((s, x) => s + x, 0)) < 1e-9);
+  assert.equal(emptyMission().takeoff, null);
 });
 
 test('una misión normal es válida', () => {

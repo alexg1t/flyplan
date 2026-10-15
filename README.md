@@ -11,6 +11,10 @@ Tiene dos tipos de misión:
   pasadas, los puntos de foto, el GSD, el tiempo y cuántas baterías hacen falta. Si no cabe
   en una batería, divide la misión en partes de 25 minutos.
 
+Toda misión tiene un **punto de despegue** ("H" en el mapa), que es la referencia de las
+alturas. Con él, la **simulación 2D** muestra el vuelo completo (despegue, ida, misión, vuelta
+a casa y aterrizaje), las fotos que se van tomando y el tiempo real de cada batería.
+
 El Air 3S no tiene SDK, así que la misión se instala sustituyendo el archivo de una misión
 ficticia creada en DJI Fly. Los pasos están en [`public/ayuda.html`](public/ayuda.html).
 

@@ -3,6 +3,7 @@ import { LIMITS, emptyMission, effective, distance, duration, validate, isClosed
 import { WPML_VERIFIED, buildFiles, parseMission, parseProfile } from './wpml.js';
 import { zip, unzip } from './kmz.js';
 import { MAPPING_LIMITS, emptyArea, gsd, heightForGsd, computeGrid, toMissions } from './grid.js';
+import { buildTimeline, stateAt, footprintPolygon } from './sim.js';
 
 const MISSION_KEY = 'flyplan.mission';
 const PROFILE_KEY = 'flyplan.droneProfile';
@@ -53,9 +54,11 @@ function showIssues(title, issues, kind) {
 // ---------- Persistencia ----------
 
 const finite = (...values) => values.every(Number.isFinite);
+const validTakeoff = (t) => t == null || finite(t.lat, t.lon);
 
 const isRoute = (m) =>
   (m?.type ?? 'route') === 'route' &&
+  validTakeoff(m.takeoff) &&
   typeof m.name === 'string' &&
   FIELDS.every((f) => Number.isFinite(m.defaults?.[f])) &&
   Array.isArray(m.waypoints) &&
@@ -69,6 +72,7 @@ const validParams = (p) =>
 
 const isAreaMission = (m) =>
   m?.type === 'area' &&
+  validTakeoff(m.takeoff) &&
   typeof m.name === 'string' &&
   Array.isArray(m.vertices) &&
   m.vertices.every((v) => finite(v.lat, v.lon)) &&
@@ -112,10 +116,12 @@ function store(key, value) {
 // ---------- Estado ----------
 
 let mission = load(MISSION_KEY, isMission, 'La misión') ?? emptyMission();
+mission.takeoff ??= null; // misiones guardadas antes de la feature 003
 let profile = load(PROFILE_KEY, isProfile, 'El KMZ de referencia');
 let selected = null; // waypoint seleccionado (ruta)
 let selectedVertex = null; // vértice seleccionado (área)
 let grid = null; // última cuadrícula calculada (área)
+let placingTakeoff = false; // el siguiente clic recoloca el despegue
 
 const isArea = () => mission.type === 'area';
 const hasContent = () => (isArea() ? mission.vertices.length : mission.waypoints.length) > 0;
@@ -140,6 +146,8 @@ function commit(full = true) {
     if (full) renderEditor();
   }
   if (full) renderMissionForm();
+  renderTakeoff();
+  syncSim();
 }
 
 function select(i) {
@@ -229,6 +237,12 @@ function fitMission() {
 }
 
 map.on('click', (e) => {
+  if (placingTakeoff || !mission.takeoff) {
+    mission.takeoff = { lat: e.latlng.lat, lon: e.latlng.lng };
+    placingTakeoff = false;
+    commit();
+    return;
+  }
   if (isArea()) {
     addVertex(e.latlng);
     return;
@@ -639,7 +653,9 @@ for (const radio of document.querySelectorAll('input[name="mission-type"]')) {
       commit(); // vuelve a marcar el tipo actual
       return;
     }
+    const { takeoff } = mission; // el despegue sigue siendo el mismo sitio
     mission = radio.value === 'area' ? emptyArea() : emptyMission();
+    mission.takeoff = takeoff;
     selected = null;
     selectedVertex = null;
     commit();
@@ -724,7 +740,9 @@ function openMission(files, name) {
 
 $('btn-new').addEventListener('click', () => {
   if (hasContent() && !confirm('Empezar una misión nueva sustituye la misión en curso. ¿Continuar?')) return;
+  const { takeoff } = mission;
   mission = isArea() ? emptyArea() : emptyMission();
+  mission.takeoff = takeoff;
   selected = null;
   selectedVertex = null;
   commit();
@@ -789,6 +807,10 @@ $('btn-export').addEventListener('click', () => {
       link('ayuda.html#referencia', 'Cómo obtenerlo'));
     return;
   }
+  if (!mission.takeoff) {
+    notify('Marca el punto de despegue antes de exportar.', 'warn');
+    return;
+  }
   if (isArea()) {
     exportArea();
     return;
@@ -814,6 +836,201 @@ $('btn-export').addEventListener('click', () => {
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   notify('KMZ descargado. ', 'info', link('ayuda.html#transferir', 'Cómo instalarlo en DJI Fly'));
+});
+
+// ---------- Punto de despegue (feature 003, FR-010) ----------
+
+const homeLayer = L.layerGroup().addTo(map);
+
+function renderTakeoff() {
+  homeLayer.clearLayers();
+  const hint = $('takeoff-hint');
+  hint.hidden = Boolean(mission.takeoff) && !placingTakeoff;
+  hint.textContent = placingTakeoff
+    ? 'Haz clic en el mapa para mover el punto de despegue.'
+    : 'Primero marca el punto de despegue: haz clic en el mapa donde vas a despegar.';
+  if (!mission.takeoff) return;
+  const marker = L.marker(ll(mission.takeoff), {
+    draggable: true,
+    zIndexOffset: 1000,
+    title: 'Punto de despegue (arrástralo para moverlo)',
+    icon: L.divIcon({ className: 'home-marker', html: '<div class="home-icon">H</div>', iconSize: [26, 26], iconAnchor: [13, 13] }),
+  });
+  marker.on('dragend', (e) => {
+    const { lat, lng } = e.target.getLatLng();
+    mission.takeoff = { lat, lon: lng };
+    commit();
+  });
+  homeLayer.addLayer(marker);
+}
+
+$('btn-takeoff').addEventListener('click', () => {
+  placingTakeoff = true;
+  renderTakeoff();
+});
+
+// ---------- Simulación (feature 003) ----------
+
+const PHASES = { despegue: 'Despegue', ida: 'Ida al inicio', mision: 'Misión', vuelta: 'Vuelta a casa', aterrizaje: 'Aterrizaje' };
+const simLayer = L.layerGroup().addTo(map);
+const takenRenderer = L.canvas({ padding: 0.5 });
+let timeline = null;
+let simKey = null; // la misión con la que se construyó la línea de tiempo
+let simT = 0;
+let playing = false;
+let lastFrame = null;
+let taken = -1; // último punto pintado como tomado
+let sim = null; // capas de Leaflet de la simulación
+
+/** Reconstruye la simulación solo si la misión cambió (FR-008). */
+function syncSim() {
+  const key = JSON.stringify(mission);
+  if (key === simKey) return;
+  simKey = key;
+  timeline = buildTimeline(mission);
+  playing = false;
+  simT = 0;
+  simLayer.clearLayers();
+  sim = null;
+  if (timeline) {
+    sim = {
+      travelled: L.polyline([], { color: '#30d158', weight: 4, interactive: false }),
+      taken: L.layerGroup(),
+      footprint: L.polygon([], { color: '#30d158', weight: 1, fillOpacity: 0.15, interactive: false }),
+      drone: L.marker(ll(mission.takeoff), {
+        interactive: false,
+        zIndexOffset: 2000,
+        icon: L.divIcon({ className: 'drone-marker', html: '<div class="drone-icon"></div>', iconSize: [24, 24], iconAnchor: [12, 12] }),
+      }),
+    };
+    for (const layer of Object.values(sim)) simLayer.addLayer(layer);
+  }
+  taken = -1;
+  renderBatteries();
+  renderSim();
+}
+
+function simReason() {
+  if (!mission.takeoff) return 'Marca el punto de despegue para simular.';
+  if (isArea()) {
+    if (!mission.closed) return 'Cierra el área para simular.';
+    return grid?.error ?? 'El área no es válida: dos lados se cruzan.';
+  }
+  return 'Añade al menos 2 waypoints para simular.';
+}
+
+function renderSim() {
+  const can = Boolean(timeline);
+  for (const id of ['sim-play', 'sim-reset', 'sim-progress', 'sim-speed']) $(id).disabled = !can;
+  $('sim-reason').hidden = can;
+  $('sim-reason').textContent = can ? '' : simReason();
+  const ended = can && simT >= timeline.total;
+  $('sim-play').textContent = playing ? 'Pausa' : simT > 0 && !ended ? 'Reanudar' : 'Simular';
+  const set = (id, text) => {
+    $(id).textContent = text;
+  };
+  if (!can) {
+    for (const id of ['sim-phase', 'sim-height', 'sim-elapsed', 'sim-remaining', 'sim-distance', 'sim-part', 'sim-point', 'sim-actions']) set(id, '—');
+    return;
+  }
+
+  const s = stateAt(timeline, simT);
+  sim.drone.setLatLng([s.lat, s.lon]);
+  const arrow = sim.drone.getElement()?.querySelector('.drone-icon');
+  if (arrow) arrow.style.transform = `rotate(${s.heading}deg)`;
+
+  // Tramo recorrido: los extremos de los segmentos ya terminados más la posición actual.
+  const segs = timeline.segments;
+  sim.travelled.setLatLngs([ll(segs[0].from), ...segs.slice(0, s.index).map((g) => ll(g.to)), [s.lat, s.lon]]);
+
+  // Puntos tomados: se añaden al avanzar y se reconstruyen al retroceder.
+  if (s.reached < taken) {
+    sim.taken.clearLayers();
+    taken = -1;
+  }
+  for (let i = taken + 1; i <= s.reached; i++) {
+    sim.taken.addLayer(L.circleMarker(ll(timeline.points[i]), {
+      renderer: takenRenderer, radius: 4, color: '#003d12', weight: 1, fillColor: '#30d158', fillOpacity: 1, interactive: false,
+    }));
+  }
+  taken = s.reached;
+
+  // Huella de la última foto (solo áreas).
+  sim.footprint.setLatLngs(timeline.direction !== null && s.reached >= 0
+    ? footprintPolygon(timeline.points[s.reached], timeline.photoHeight, timeline.direction).map(ll)
+    : []);
+
+  const n = timeline.points.length;
+  const atStop = s.segment.kind === 'stop';
+  set('sim-phase', PHASES[s.phase]);
+  set('sim-height', `${number(s.height)} m`);
+  set('sim-elapsed', formatDuration(s.elapsed));
+  set('sim-remaining', formatDuration(s.remaining));
+  set('sim-distance', formatDistance(s.distance));
+  set('sim-part', `${s.part + 1} de ${timeline.batteries.length}`);
+  set('sim-point', s.reached >= 0 ? `${isArea() ? 'Foto' : 'Waypoint'} ${s.reached + 1} de ${n}` : '—');
+  set('sim-actions', atStop
+    ? timeline.actions(s.reached).map((a) => (a.type === 'wait' ? `Esperar ${a.seconds} s` : ACTION_LABELS[a.type])).join(', ') || 'Ninguna'
+    : '—');
+
+  const bar = $('sim-progress');
+  bar.max = Math.ceil(timeline.total);
+  bar.value = Math.round(simT); // siempre, para que la barra siga a la reproducción aunque tenga el foco
+}
+
+function renderBatteries() {
+  const list = $('sim-batteries');
+  if (!timeline) {
+    list.replaceChildren();
+    return;
+  }
+  list.replaceChildren(...timeline.batteries.map((b) => {
+    const li = document.createElement('li');
+    const over = b.seconds > LIMITS.warnDuration;
+    li.className = over ? 'warn' : '';
+    li.textContent = `Batería ${b.part + 1}: ${formatDuration(b.seconds)} con ida y vuelta` +
+      (b.returnsHome ? '' : ' (sin vuelta a casa: termina en el sitio)') +
+      (over ? ` · supera ${LIMITS.warnDuration / 60} min` : '');
+    return li;
+  }));
+}
+
+function frame(now) {
+  if (!playing) return;
+  const dt = lastFrame === null ? 0 : (now - lastFrame) / 1000;
+  lastFrame = now;
+  simT = Math.min(timeline.total, simT + dt * Number($('sim-speed').value));
+  if (simT >= timeline.total) playing = false;
+  renderSim();
+  if (playing) requestAnimationFrame(frame);
+}
+
+$('sim-play').addEventListener('click', () => {
+  if (!timeline) return;
+  if (playing) {
+    playing = false;
+  } else {
+    if (simT >= timeline.total) simT = 0;
+    playing = true;
+    lastFrame = null;
+    requestAnimationFrame(frame);
+  }
+  renderSim();
+});
+$('sim-reset').addEventListener('click', () => {
+  playing = false;
+  simT = 0;
+  renderSim();
+});
+$('sim-progress').addEventListener('input', (e) => {
+  simT = Number(e.target.value);
+  renderSim();
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && playing) {
+    playing = false;
+    renderSim();
+  }
 });
 
 // ---------- Inicio ----------

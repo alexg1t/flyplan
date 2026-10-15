@@ -66,9 +66,43 @@
         <button type="button" id="btn-reference">Cargar KMZ de referencia</button>
         <button type="button" id="btn-open">Abrir KMZ</button>
         <button type="button" id="btn-new">Nueva misión</button>
+        <button type="button" id="btn-takeoff">Mover despegue</button>
       </div>
+      <p id="takeoff-hint" class="msg warn" hidden></p>
       <p id="profile-status" class="muted"></p>
       <input id="file-input" type="file" accept=".kmz" hidden>
+
+      <section id="sim" class="sim">
+        <h2>Simulación</h2>
+        <p id="sim-reason" class="muted"></p>
+        <div class="buttons small">
+          <button type="button" id="sim-play" class="primary">Simular</button>
+          <button type="button" id="sim-reset">Reiniciar</button>
+          <label class="speed">Velocidad
+            <select id="sim-speed">
+              <option value="1">×1</option>
+              <option value="5">×5</option>
+              <option value="10" selected>×10</option>
+              <option value="30">×30</option>
+              <option value="60">×60</option>
+              <option value="120">×120</option>
+            </select>
+          </label>
+        </div>
+        <input id="sim-progress" type="range" min="0" max="0" step="1" value="0"
+               aria-label="Momento de la simulación">
+        <dl class="sim-read">
+          <div><dt>Fase</dt><dd id="sim-phase">—</dd></div>
+          <div><dt>Altura</dt><dd id="sim-height">—</dd></div>
+          <div><dt>Transcurrido</dt><dd id="sim-elapsed">—</dd></div>
+          <div><dt>Restante</dt><dd id="sim-remaining">—</dd></div>
+          <div><dt>Distancia</dt><dd id="sim-distance">—</dd></div>
+          <div><dt>Parte</dt><dd id="sim-part">—</dd></div>
+          <div class="wide"><dt>Punto actual</dt><dd id="sim-point">—</dd></div>
+          <div class="wide"><dt>Acciones</dt><dd id="sim-actions">—</dd></div>
+        </dl>
+        <ul id="sim-batteries"></ul>
+      </section>
 
       <div data-mode="route">
         <section>

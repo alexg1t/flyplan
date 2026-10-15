@@ -345,7 +345,8 @@ export function parseMission(files, name) {
   }
 
   return {
-    mission: { name: (name || base.name).slice(0, 60), defaults, finishAction, onSignalLost, waypoints },
+    // El KMZ no guarda el punto de despegue: el piloto lo marca al abrirlo (feature 003, FR-010).
+    mission: { name: (name || base.name).slice(0, 60), defaults, finishAction, onSignalLost, waypoints, takeoff: null },
     warnings,
   };
 }

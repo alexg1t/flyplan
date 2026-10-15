@@ -181,11 +181,30 @@ for (const [label, params] of [['por waypoints', {}], ['por tiempo', { speed: 1 
       assert.equal(part.start, expected, 'sin huecos ni repeticiones');
       assert.ok(part.end - part.start >= 2 && part.end - part.start <= MAPPING_LIMITS.partWaypoints);
       assert.ok(partSeconds(a, grid, part) <= MAPPING_LIMITS.partSeconds);
+      assert.ok(Math.abs(part.seconds - partSeconds(a, grid, part)) < 0.01, 'part.seconds');
       expected = part.end;
     }
     assert.equal(expected, grid.photos.length);
   });
 }
+
+test('el tiempo del resumen es la suma de las partes, sin los tramos entre partes', () => {
+  const a = area([[0, 0], [600, 0], [600, 600], [0, 600]]);
+  const grid = computeGrid(a);
+  const sum = grid.parts.reduce((s, p) => s + p.seconds, 0);
+  assert.ok(Math.abs(grid.stats.duration - sum) < 1e-9);
+  const withGaps = grid.stats.distance / a.params.speed + grid.photos.length * photoSeconds(a.params.resolution);
+  assert.ok(grid.stats.duration < withGaps);
+});
+
+test('la ruta empieza en el extremo más cercano al despegue (FR-014)', () => {
+  const takeoff = toLatLon([130, 130]); // más allá de la esquina opuesta al vértice 1
+  const withTakeoff = computeGrid({ ...area(SQUARE), takeoff });
+  const without = computeGrid(area(SQUARE));
+  assert.ok(meters(withTakeoff.photos[0], takeoff) <= meters(withTakeoff.photos.at(-1), takeoff));
+  assert.ok(meters(withTakeoff.photos[0], takeoff) < meters(without.photos[0], takeoff));
+  assert.equal(emptyArea().takeoff, null);
+});
 
 test('demasiadas fotos devuelve un error sin generar la cuadrícula', () => {
   const huge = [[0, 0], [707, 0], [707, 707], [0, 707]]; // 50 ha
