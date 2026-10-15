@@ -83,6 +83,9 @@ exportar y comprobar en DJI Fly que el waypoint muestra los valores nuevos.
 5. **Given** un waypoint con las acciones "esperar 3 s" y "hacer foto", en ese orden,
    **When** el piloto exporta y abre la misión en DJI Fly, **Then** DJI Fly muestra ambas
    acciones en ese waypoint y en ese orden.
+6. **Given** un cuadrado de 4 waypoints, **When** el piloto hace clic en el waypoint 1 del
+   mapa, **Then** se añade el waypoint 5 en la posición del 1, la línea dibuja los 4 lados y
+   la distancia incluye el lado de vuelta.
 
 ---
 
@@ -156,6 +159,10 @@ DJI Fly una misión exportada por flyplan, en Android y en iOS.
   nombre o coordenadas.
 - **FR-002**: Los pilotos MUST poder añadir un waypoint con un clic en el mapa, moverlo
   arrastrándolo, borrarlo y cambiar su posición en el orden de la ruta.
+- **FR-002a**: Con 3 o más waypoints, un clic en el waypoint 1 del mapa MUST cerrar la ruta:
+  añade un waypoint final en la misma posición que el 1 (misma altura y gimbal, sin
+  acciones). En una ruta cerrada, el mapa muestra un solo marcador "1/n" y moverlo mueve los
+  dos waypoints.
 - **FR-003**: flyplan MUST mostrar los waypoints numerados en orden de vuelo y unidos por la
   línea de la ruta.
 - **FR-004**: Cada waypoint MUST tener altura, velocidad, ángulo del gimbal, rumbo y una

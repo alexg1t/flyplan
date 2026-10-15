@@ -10,6 +10,8 @@ cuadrícula y un servidor futuro. Ninguno de estos módulos toca el DOM ni Leafl
 LIMITS                                   constante congelada (data-model.md)
 emptyMission() -> Mission
 effective(mission, waypoint, field) -> number
+isClosed(mission) -> boolean             ≥ 4 waypoints y el último en la misma posición que el primero
+closeRoute(mission) -> void              añade un waypoint final en el punto 1 (FR-002a)
 distance(mission) -> number              metros (research R10)
 duration(mission) -> number              segundos (research R10)
 validate(mission) -> ValidationResult    errores bloquean, avisos se confirman

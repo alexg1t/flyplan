@@ -25,6 +25,20 @@ export function emptyMission() {
   };
 }
 
+/** Ruta cerrada: el último waypoint está en la misma posición que el primero. */
+export function isClosed(mission) {
+  const w = mission.waypoints;
+  const first = w[0];
+  const last = w[w.length - 1];
+  return w.length >= 4 && first.lat === last.lat && first.lon === last.lon;
+}
+
+/** Cierra la ruta con un waypoint final en el punto 1 (misma altura y gimbal, sin acciones). */
+export function closeRoute(mission) {
+  const first = mission.waypoints[0];
+  mission.waypoints.push({ ...first, speed: null, heading: null, actions: [] });
+}
+
 /** Valor que vuela el dron: el del waypoint o, si es null, el de la misión. */
 export function effective(mission, wp, field) {
   return wp[field] ?? mission.defaults[field];

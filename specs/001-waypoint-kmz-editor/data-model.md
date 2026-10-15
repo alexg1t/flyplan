@@ -34,6 +34,10 @@ Valores derivados (no se guardan): `distance` (m) y `duration` (s), ver research
 El número visible del waypoint es su posición en el array + 1. No hay id propio: mover,
 borrar o reordenar renumera (spec, US2).
 
+**Ruta cerrada** (FR-002a): no es un campo. Una misión está cerrada cuando tiene 4 o más
+waypoints y el último está en la misma posición que el primero. Así DJI Fly vuelve al
+inicio sin ningún campo WPML nuevo.
+
 **Valor efectivo**: `effective(mission, wp, campo)` devuelve `wp[campo] ?? mission.defaults[campo]`.
 Al cambiar un valor por defecto, solo cambian los waypoints con `null` en ese campo (US2,
 escenario 4).

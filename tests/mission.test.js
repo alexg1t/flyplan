@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LIMITS, emptyMission, effective, distance, duration, validate } from '../public/js/mission.js';
+import { LIMITS, emptyMission, effective, distance, duration, validate, isClosed, closeRoute } from '../public/js/mission.js';
 
 const wp = (lat, lon, extra = {}) => ({
   lat, lon, height: null, speed: null, gimbalPitch: null, heading: null, actions: [], ...extra,
@@ -95,6 +95,29 @@ test('el error nombra el waypoint y el valor', () => {
   assert.equal(error.waypoint, 2);
   assert.equal(error.value, 600);
   assert.match(error.message, /Waypoint 2: altura 600 m/);
+});
+
+test('cerrar un cuadrado añade el lado de vuelta al punto 1', () => {
+  // Cuadrado de ~111 m de lado (0,001° de latitud; la longitud se ajusta por cos(40°)).
+  const dLon = 0.001 / Math.cos((40 * Math.PI) / 180);
+  const m = mission(wp(40, -3, { height: 30, gimbalPitch: -90 }), wp(40, -3 + dLon), wp(40.001, -3 + dLon), wp(40.001, -3));
+  assert.equal(isClosed(m), false);
+  const open = distance(m);
+
+  closeRoute(m);
+  assert.equal(isClosed(m), true);
+  assert.equal(m.waypoints.length, 5);
+  const last = m.waypoints[4];
+  assert.deepEqual([last.lat, last.lon, last.height, last.gimbalPitch], [40, -3, 30, -90]);
+  assert.deepEqual([last.speed, last.heading, last.actions], [null, null, []]);
+  // Lado de cierre: 111,2 m horizontales y de 50 m (WP4) a 30 m (altura copiada del WP1).
+  assert.ok(Math.abs(distance(m) - open - Math.hypot(111.2, 20)) < 0.5);
+  assert.deepEqual(validate(m).errors, []);
+});
+
+test('una ruta de 3 waypoints con el último en el inicio no cuenta como cerrada', () => {
+  const m = mission(wp(40, -3), wp(40.001, -3), wp(40, -3));
+  assert.equal(isClosed(m), false);
 });
 
 test('nombre de misión vacío o de más de 60 caracteres es error', () => {

@@ -142,9 +142,9 @@ details summary { cursor: pointer; font-weight: 600; margin-top: 18px; }
 .wp-icon {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 13px;
   background: var(--wp);
   color: #000;
   font: 700 12px "Segoe UI", system-ui, sans-serif;

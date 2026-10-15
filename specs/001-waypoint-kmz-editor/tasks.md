@@ -181,6 +181,8 @@ fixture.
   - Valores por defecto.
   - Cada cambio llama a `render()` y `save()`.
 
+- [X] T039 [US2] Cerrar la ruta (FR-002a), pedido por el piloto tras probar un cuadrado: `isClosed()` y `closeRoute()` en `public/js/mission.js` con pruebas en `tests/mission.test.js`. En `public/js/main.js`, un clic en el waypoint 1 con 3 o más waypoints cierra la ruta; en una ruta cerrada se muestra un solo marcador "1/n" que mueve los dos waypoints. Pista en `public/index.html` (`#route-hint`).
+
 **Checkpoint**: US1 y US2 funcionan juntas en local.
 
 ---

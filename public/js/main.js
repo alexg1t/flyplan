@@ -1,5 +1,5 @@
 // Interfaz: único módulo con estado, DOM, Leaflet y localStorage (contracts/modules.md).
-import { LIMITS, emptyMission, effective, distance, duration, validate } from './mission.js';
+import { LIMITS, emptyMission, effective, distance, duration, validate, isClosed, closeRoute } from './mission.js';
 import { WPML_VERIFIED, buildFiles, parseMission, parseProfile } from './wpml.js';
 import { zip, unzip } from './kmz.js';
 
@@ -135,33 +135,54 @@ tiles.on('tileload', () => {
 const route = L.polyline([], { color: '#ffd400', weight: 3 }).addTo(map);
 const markers = L.layerGroup().addTo(map);
 
-const icon = (i) =>
-  L.divIcon({
+function icon(label, isSelected) {
+  const width = String(label).length > 2 ? 44 : 26; // "1/12" necesita más ancho que "12"
+  return L.divIcon({
     className: 'wp-marker',
-    html: `<div class="wp-icon${i === selected ? ' selected' : ''}">${i + 1}</div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
+    html: `<div class="wp-icon${isSelected ? ' selected' : ''}">${label}</div>`,
+    iconSize: [width, 26],
+    iconAnchor: [width / 2, 13],
   });
+}
+
+function closeRouteFromMap() {
+  closeRoute(mission);
+  const n = mission.waypoints.length;
+  selected = n - 1;
+  commit();
+  notify(`Ruta cerrada: el waypoint ${n} vuelve al punto de inicio. Para deshacerlo, borra el waypoint ${n}.`);
+}
 
 function renderMap() {
+  const n = mission.waypoints.length;
+  const closed = isClosed(mission);
+  // En una ruta cerrada, el último waypoint está encima del primero: un solo marcador "1/n" mueve los dos.
+  const linked = (i) => (closed && (i === 0 || i === n - 1) ? [0, n - 1] : [i]);
   markers.clearLayers();
   mission.waypoints.forEach((w, i) => {
-    const marker = L.marker([w.lat, w.lon], { draggable: true, icon: icon(i), title: `Waypoint ${i + 1}` });
-    marker.on('click', () => select(i));
+    if (closed && i === n - 1) return;
+    const label = closed && i === 0 ? `1/${n}` : i + 1;
+    const isSelected = linked(i).includes(selected);
+    const marker = L.marker([w.lat, w.lon], { draggable: true, icon: icon(label, isSelected), title: `Waypoint ${label}` });
+    marker.on('click', () => {
+      if (i === 0 && n >= 3 && !closed) closeRouteFromMap();
+      else select(i);
+    });
     marker.on('drag', (e) => {
       const points = route.getLatLngs();
-      points[i] = e.target.getLatLng();
+      for (const j of linked(i)) points[j] = e.target.getLatLng();
       route.setLatLngs(points);
     });
     marker.on('dragend', (e) => {
       const { lat, lng } = e.target.getLatLng();
-      Object.assign(mission.waypoints[i], { lat, lon: lng });
+      for (const j of linked(i)) Object.assign(mission.waypoints[j], { lat, lon: lng });
       selected = i;
       commit();
     });
     markers.addLayer(marker);
   });
   route.setLatLngs(mission.waypoints.map((w) => [w.lat, w.lon]));
+  $('route-hint').hidden = n < 3 || closed;
 }
 
 function fitRoute() {
