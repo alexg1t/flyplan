@@ -193,9 +193,9 @@ cuadrícula completa y el resumen (quickstart §3, escenarios 1 a 4).
 ## Phase 7: Verificación con datos reales (BLOQUEADA)
 
 - [ ] T026 [US3] **[BLOQUEADA: feature 001 T035]** Exportar un área pequeña y otra dividida en partes, instalarlas en DJI Fly y comprobar que la vista previa coincide (SC-005). Anotar el resultado en `specs/002-mapping-grid/checklists/vuelo-prueba.md`.
-- [ ] T027 **[BLOQUEADA: foto real]** Leer el ancho en el EXIF de una foto de 12 MP del Air 3S y ajustar `CAMERA.width[12]` en `public/js/grid.js` y la tabla de research.md R1.
+- [ ] T027 **[BLOQUEADA: foto real]** Leer el ancho y el alto de `fixtures/foto-12mp.jpg` y `fixtures/foto-50mp.jpg` (paso 5 del instructivo v2). Ajustar `CAMERA.width` en `public/js/grid.js` y la tabla de research.md R1, y confirmar el formato 4:3.
 - [ ] T028 **[BLOQUEADA: vuelo de prueba]** Volar un área de 1 ha o menos. El número de fotos debe diferir menos de un 5 % del planificado y el ortomosaico no debe tener huecos (SC-006). Ajustar `PHOTO_EXTRA_SECONDS` con el tiempo real y anotarlo en `checklists/vuelo-prueba.md`.
-- [ ] T029 [US2] **[BLOQUEADA: KMZ real con disparo por intervalo]** Activar el modo "Disparo por intervalo":
+- [ ] T029 [US2] **[BLOQUEADA: KMZ real con disparo por intervalo]** Solo si el KMZ de referencia trae el WP5 del instructivo v2 (DJI Fly ofrece la acción). Activar el modo "Disparo por intervalo":
   - Waypoints solo en los extremos de las pasadas, más una acción `multipleDistance` con la forma XML copiada del KMZ real.
   - Aviso de FR-011: `v_max = separación entre fotos / CAMERA.minInterval[resolution]`.
   - Pruebas en `tests/grid.test.js`.

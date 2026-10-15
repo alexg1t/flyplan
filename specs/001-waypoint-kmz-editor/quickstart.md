@@ -12,11 +12,15 @@
 
 Este archivo es el fixture de las pruebas y el KMZ de referencia de la app.
 
-1. En DJI Fly, entra en Waypoints y crea una misión de 4 waypoints:
+1. En DJI Fly, entra en Waypoints y crea una misión de 4 waypoints (5 si existe la acción de
+   fotos por intervalo). Es la versión 2 del instructivo, `fixtures/instructivo-kmz-referencia.pdf`:
    - WP1: acción hacer foto.
-   - WP2: acción empezar vídeo y rumbo fijo (cualquier ángulo).
-   - WP3: espera de 3 s y acción parar vídeo.
-   - WP4: gimbal a −90°.
+   - WP2: altura propia de 70 m, acción empezar vídeo y rumbo fijo (cualquier ángulo).
+   - WP3: velocidad propia de 3 m/s (si DJI Fly lo permite), espera de 3 s y acción parar vídeo.
+   - WP4: gimbal a −90° y acción hacer foto.
+   - WP5 (opcional): acción de fotos por intervalo o por distancia, solo si DJI Fly la ofrece.
+   - Ajustes generales: 5 m/s, 50 m, volver al punto de origen al terminar y, si existe la
+     opción, trayectoria recta.
 2. Guárdala con el nombre `referencia`.
 3. Copia el KMZ al PC:
    - Android: conecta por USB y abre

@@ -244,7 +244,7 @@ fixture.
 
 **Purpose**: confirmar los elementos provisionales **[F]**, los valores del dron y los límites. Sin esta fase, US1 no puede darse por terminada (constitución I y flujo de desarrollo).
 
-- [ ] T033 [US1] **[BLOQUEADA: fixture]** Guardar el KMZ del piloto como `fixtures/referencia-air3s.kmz` (misión de 4 waypoints de quickstart §1). Descomprimirlo y anotar en research.md R2 y R3 el namespace, `wpml:author`, `droneEnumValue`, `droneSubEnumValue`, `payloadInfo` y los campos de `missionConfig`. Cambiar su estado a "Verificado".
+- [ ] T033 [US1] **[BLOQUEADA: fixture]** Guardar el KMZ del piloto como `fixtures/referencia-air3s.kmz` (misión de 4 o 5 waypoints de quickstart §1, instructivo v2). Descomprimirlo y anotar en research.md R2 y R3 el namespace, `wpml:author`, `droneEnumValue`, `droneSubEnumValue`, `payloadInfo` y los campos de `missionConfig`. Cambiar su estado a "Verificado".
 - [ ] T034 [P] [US1] **[BLOQUEADA: fixture]** Añadir a `tests/kmz.test.js` una prueba: `unzip` del fixture devuelve `wpmz/template.kml` y `wpmz/waylines.wpml`. Si falta el archivo, la prueba se marca como `skip` con el mensaje "falta fixtures/referencia-air3s.kmz".
 - [ ] T035 [US1] **[BLOQUEADA: fixture]** Ajustar los elementos **[F]** de `public/js/wpml.js` para que coincidan exactamente con el fixture:
   - campos de `missionConfig`;
@@ -259,7 +259,7 @@ fixture.
   - Si el fixture tiene más valores propios del dron, añadirlos a `parseProfile` y a data-model.md.
 - [ ] T036 [US1] **[BLOQUEADA: fixture]** Añadir a `tests/wpml.test.js` pruebas con el fixture. Si falta el archivo, `skip` con el mismo mensaje. Casos:
   - Valores de `parseProfile`.
-  - `parseMission` devuelve 4 waypoints con sus acciones.
+  - `parseMission` devuelve 4 o 5 waypoints con sus acciones, la altura de 70 m del WP2 y, si DJI Fly la permite, la velocidad de 3 m/s del WP3.
   - El conjunto de rutas de elementos de `buildFiles(parseMission(fixture), perfil)` es igual al del fixture en `missionConfig`, `Folder` y `Placemark`.
   - Cada acción tiene la misma forma XML que en el fixture.
   - Abrir el fixture y exportarlo sin cambios conserva el 100 % de los waypoints y parámetros (SC-004).

@@ -27,25 +27,35 @@
     <h2 id="referencia">1. El KMZ de referencia (una sola vez)</h2>
     <p>
       Para exportar, flyplan necesita un KMZ creado por tu propia app DJI Fly con tu Air 3S. De él
-      copia los datos que identifican a tu dron y la forma exacta de cada acción.
+      copia los datos que identifican a tu dron y la forma exacta de cada acción. Sirve para los
+      dos tipos de misión (ruta y área de mapeo), porque DJI Fly instala ambas como misiones de
+      waypoints.
     </p>
     <ol>
       <li>En DJI Fly, con el Air 3S conectado, entra en <b>Waypoints</b>.</li>
-      <li>Crea una misión de 4 waypoints tocando el mapa (no hace falta volar):
+      <li>Crea una misión de 4 waypoints (5 si existe la acción del WP5) tocando el mapa (no hace falta volar):
         <table>
-          <tr><th>Waypoint</th><th>Qué configurar</th></tr>
+          <tr><th>Punto</th><th>Qué configurar</th></tr>
           <tr><td>WP1</td><td>Acción: hacer foto.</td></tr>
-          <tr><td>WP2</td><td>Acción: empezar a grabar. Rumbo: ángulo fijo (por ejemplo 90°).</td></tr>
-          <tr><td>WP3</td><td>Espera de 3 s. Después, acción: detener grabación.</td></tr>
-          <tr><td>WP4</td><td>Gimbal a -90°.</td></tr>
+          <tr><td>WP2</td><td>Altura propia: 70 m. Acción: empezar a grabar. Rumbo: ángulo fijo (por ejemplo 90°).</td></tr>
+          <tr><td>WP3</td><td>Velocidad propia: 3 m/s (si DJI Fly lo permite). Espera de 3 s. Después, acción: detener grabación.</td></tr>
+          <tr><td>WP4</td><td>Gimbal a -90° y acción: hacer foto.</td></tr>
+          <tr><td>WP5</td><td>Solo si DJI Fly la ofrece: acción de fotos por intervalo o por distancia.</td></tr>
         </table>
       </li>
+      <li>En los ajustes generales: 5 m/s, 50 m, al terminar volver al punto de origen y, si
+        existe la opción, trayectoria recta.</li>
       <li>Guárdala con el nombre <b>referencia</b> y cierra DJI Fly.</li>
       <li>Copia su archivo <code>.kmz</code> al PC siguiendo los pasos de la sección 2 (en lugar de
         sustituirlo, cópialo).</li>
       <li>En flyplan, pulsa <b>Cargar KMZ de referencia</b> y elige ese archivo.</li>
     </ol>
-    <p>El instructivo completo en PDF está en <code>fixtures/instructivo-kmz-referencia.pdf</code> del proyecto.</p>
+    <p>
+      Para el mapeo, haz también dos fotos de prueba con la cámara gran angular (una a 12 MP y otra
+      a 50 MP) y cópialas desde la tarjeta microSD del dron, no desde el móvil. Confirman el tamaño
+      de imagen con el que se calcula el GSD.
+    </p>
+    <p>El instructivo completo en PDF (versión 2) está en <code>fixtures/instructivo-kmz-referencia.pdf</code> del proyecto.</p>
 
     <h2 id="transferir">2. Instalar una misión de flyplan en DJI Fly</h2>
     <p class="callout">
